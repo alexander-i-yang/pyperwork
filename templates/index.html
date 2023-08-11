@@ -1,0 +1,18 @@
+<html>
+    <head>
+        <title>Sample app</title>
+        <!-- <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/main.css') }}"> -->
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Amatic+SC&display=swap');
+        </style>
+    </head>
+    <body>
+        <h1>{{ title }}</h1>
+        <form method="post" enctype="multipart/form-data">
+            <input type=file name=file>
+            <input type=submit value=Upload>
+        </form>
+          
+    </body>
+    <!-- <script type="text/javascript" src="data.json"></script> -->
+</html>

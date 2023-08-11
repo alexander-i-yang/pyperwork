@@ -3,10 +3,10 @@ import cv2
 import numpy as np
 from pdf2image import convert_from_path
 import pdf_combiner
-import secrets
 import time
+import json
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 
 def to_pdf(filename, extension):
@@ -30,44 +30,77 @@ def detect_blanks(img_path):
         maxs, mins = np.amax(c, axis=0)[0], np.amin(c, axis=0)[0]
         x1, x2, y1, y2 = mins[0], maxs[0], mins[1], maxs[1]
         ret = np.vstack([ret, [x1, x2, y1]])
+        
         # reduced_c = np.array([[x1, y1], [x2, y2]])
         # cv2.drawContours(image, [reduced_c], -1, (36, 255, 12), 3)
+        
         image[y1 - 3:y2 + 3, x1 - 2:x2 + 2] = [255, 255, 255]
         i += 1
 
     ret = np.delete(ret, 0, 0)
     # cv2.imshow('image', image)
+    # cv2.waitKey(0)
     return image, ret.astype(int)
 
 
 def convert_to_jpg(pdf_path):
     # Store Pdf with convert_from_path function
-    images = convert_from_path(pdf_path, poppler_path=r'C:\Program Files\poppler-22.04.0\Library\bin')
+    images = convert_from_path(pdf_path)
     ret = []
     for i in range(len(images)):
         # Save pages as images in the pdf
-        img_name = 'page' + str(i) + '.jpg'
+        img_name = './pdfs/page' + str(i) + '.jpg'
         images[i].save(img_name, 'JPEG')
         ret.append(img_name)
     return ret
 
+"""
+Secrets format: {"data": [list of field names and field vals]}
+Ex:
+{
+    "data": [
+        {
+            "field_name": ["Name"],
+            "field_vals": ["John Smith", "John P. Smith", "John"]
+        },
+        {
+            "field_names": ["Zip", "Zip Code"],
+            "field_vals": ["123245"]
+        }
+    ]
+}
+"""
+
+
+def read_secrets():
+    with open('secrets.json', 'r') as f:
+        data = json.load(f)['data']
+    return data
+
 def check_match(text, line_coords, form, x, y, w, h):
     ender = text[:-1].lower()
-    for f in secrets.fill_keywords.keys():
-        fill_keys = secrets.fill_keywords[f][0]
-        for fill_key in fill_keys:
-            if ender.endswith(fill_key) or text.endswith(fill_key):
+    secrets = read_secrets()
+    # print(text)
+    for f in secrets:
+        field_names = f["field_names"]
+        for field_name in field_names:
+            if ender.endswith(field_name) or text.endswith(field_name) or text.startswith(field_name):
                 line, dist = find_nearest_line(line_coords, y + h, x + w)
+                # print(dist)
                 if dist < 40*40:
+                    
                     # im3 = im2.copy()
                     # im3[line[2] - 3:line[2] + 3, line[0]:line[1]] = [0, 0, 255]
-                    print(f'MATCH [{text}] [{text[-1] if len(text) > 0 else ""}] [{fill_key}] [{line}]')
-                    x = line[0] * 72 / 200
-                    y = 11 * 72 - line[2] * 72 / 200
+                    # cv2.imshow('Text', im3)
+                    # cv2.waitKey()
+
+                    print(f'MATCH [{text}] [{text[-1] if len(text) > 0 else ""}] [{field_name}] [{line}]')
+                    x = line[0] * 72 / 200 # weird conversions for inches to dpi to pixels.
+                    y = 11 * 72 - line[2] * 72 / 200 # 11 - x bc the page is 11 inches tall. 
                     h = int(h * 72 / 200)
                     w = int((line[1] - line[0]) * 72 / 200)
-                    options = secrets.fill_keywords[f][1]
-                    form.choice(name=fill_key+str(time.time()), tooltip=fill_key,
+                    options = f["field_vals"]
+                    form.choice(name=field_name+str(time.time()), tooltip=field_name,
                                 x=x, y=y, borderStyle='solid', options=options,
                                 borderWidth=0, height=h, width=w, fontSize=h-2, value=options[0],
                                 fieldFlags=1 << 18, forceBorder=True)
@@ -117,8 +150,6 @@ def find_text(img, line_coords, form):
         rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (255, 0, 0), 2)
         check_match(text, line_coords, form, x, y, w, h)
         i += 1
-    # cv2.imshow('Text', im2)
-    # cv2.waitKey()
     return packet
 
 
@@ -132,8 +163,8 @@ def find_nearest_line(array, yval, xval):
 
 
 if __name__ == '__main__':
-    orig = 'immblank.pdf'
-    dest = 'immblank_filled.pdf'
+    orig = './pdfs/immblank.pdf'
+    dest = './pdfs/immblank_filled.pdf'
     img_paths = convert_to_jpg(orig)
     i = 0
     paths = []
