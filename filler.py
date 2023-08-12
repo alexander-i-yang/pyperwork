@@ -150,7 +150,6 @@ def find_text(img, line_coords, form):
         rect = cv2.rectangle(im2, (x, y), (x + w, y + h), (255, 0, 0), 2)
         check_match(text, line_coords, form, x, y, w, h)
         i += 1
-    return packet
 
 
 def find_nearest_line(array, yval, xval):
@@ -162,17 +161,12 @@ def find_nearest_line(array, yval, xval):
     return array[idx], distances[idx]
 
 
-if __name__ == '__main__':
-    orig = './pdfs/immblank.pdf'
-    dest = './pdfs/immblank_filled.pdf'
-    img_paths = convert_to_jpg(orig)
+def main(input_filename, output_filename):
+    img_paths = convert_to_jpg(input_filename)
     i = 0
     paths = []
     for img_path in img_paths:
         print(f"--PAGE {i}/{len(img_paths)-1}--")
-        # if i < 4:
-        #     i += 1
-        #     continue
         image, lines = detect_blanks(img_path)
         lines = lines[lines[:, 2].argsort()]  # Sort coords by 3rd column
         form, packet, can = pdf_combiner.get_canvas()
@@ -180,6 +174,11 @@ if __name__ == '__main__':
         can.save()
         p = f'immblank{i}.pdf'
         paths.append(p)
-        pdf_combiner.save_pdf(packet, i, orig, p)
+        pdf_combiner.save_pdf(packet, i, input_filename, p)
         i += 1
-    pdf_combiner.combine_pdfs(paths, dest)
+    pdf_combiner.combine_pdfs(paths, output_filename)
+
+if __name__ == '__main__':
+    orig = './pdfs/immblank.pdf'
+    dest = './pdfs/immblank_filled.pdf'
+    main(orig, dest)

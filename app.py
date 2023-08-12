@@ -40,12 +40,15 @@ def homepage():
             flash('No selected file')
             return redirect(request.url)
         if file and allowed_file(file.filename):
-            print("Yey1")
             filename = secure_filename(file.filename)
-            print(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            print(url_for('download_file', name=filename))
-            return redirect(url_for('download_file', name=filename))
+            
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            dest_filepath = './pdfs/immblank_filled.pdf'
+            
+            file.save(filepath)
+            filler.main(filepath, dest_filepath)
+            
+            return redirect(url_for('download_file', name=dest_filepath))
     return ''
 
 @app.route('/uploads/<name>')
